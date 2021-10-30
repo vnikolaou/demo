@@ -1,0 +1,158 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+	id 'org.springframework.boot' version '2.5.6'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'io.freefair.lombok' version '6.2.0'
+	id 'com.gorylenko.gradle-git-properties' version '2.3.1'
+	id 'org.sonarqube' version '3.3'
+	id 'jacoco'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+	mavenCentral()
+	maven { url 'https://repo.spring.io/snapshot' }
+	maven { url 'https://repo.spring.io/milestone' }
+	maven { url 'https://plugins.gradle.org/m2/' }
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-devtools'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation group: 'com.microsoft.azure', name: 'msal4j', version: '1.11.0'
+	implementation 'org.springframework.boot:spring-boot-starter-freemarker'
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	
+    implementation group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'
+	implementation group: 'org.postgresql', name: 'postgresql', version: '42.3.0'
+	implementation group: 'org.apache.commons', name: 'commons-csv', version: '1.9.0'
+	implementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
+	implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
+	
+	//hibernate types to support jsonb
+	implementation group: 'com.vladmihalcea', name: 'hibernate-types-52', version: '2.14.0'
+
+	implementation group: 'com.azure', name: 'azure-storage-blob', version: '12.14.1'
+	implementation group: 'com.azure', name: 'azure-identity', version: '1.4.0'	
+	implementation group: 'com.azure', name: 'azure-core', version: '1.21.0'
+
+	implementation group: 'io.projectreactor', name: 'reactor-core', version: '3.4.11' //need version above 3.4.0
+	implementation group: 'com.smartsheet', name: 'smartsheet-sdk-java', version: '2.126.1'
+	
+	implementation group: 'com.azure.resourcemanager', name: 'azure-resourcemanager', version: '2.9.0'
+	
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: '4.0.0'
+	testImplementation group: 'org.mockito', name: 'mockito-junit-jupiter', version: '4.0.0'
+	testImplementation group: 'org.mockito', name: 'mockito-inline', version: '4.0.0'
+
+	
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+processResources {
+    exclude('application.properties')
+    exclude('application-dev.properties')  
+}
+
+// Customize Git properties plugin.
+gitProperties {
+    // Change date format in git.properties file.
+    dateFormat = "yyyy.MM.dd-HH.mm.ss"
+    dateFormatTimeZone = 'GMT'
+}
+
+// start: jacoco code coverage  (./gradlew clean test runs jacocoTestReport after success)
+jacoco {
+    toolVersion = "0.8.7"
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.9
+            }
+        }
+
+        rule {
+            enabled = true
+            element = 'CLASS'
+            includes = ['com.alignedincentives.api.service.*']
+
+            limit {
+                counter = 'LINE'
+                value = 'TOTALCOUNT'
+                maximum = 0.9
+            }
+        }
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+}
+// end: jacoco code coverage
+
+// start: integration tests
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+    integrationTestImplementation.extendsFrom testImplementation
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+    
+    test {
+    	java {
+      		srcDirs = ['src/test/java']
+    	}
+    	resources {
+            srcDirs = ['src/test/resources']
+        }
+  	}
+  	
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+    }
+
+}
+
+task integrationTest(type: Test) {
+    setTestClassesDirs(sourceSets.integrationTest.output)
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+// end: integration tests
+
+bootJar {
+	launchScript()
+}
+
+
